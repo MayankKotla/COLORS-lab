@@ -1,0 +1,106 @@
+@startuml activity
+' ============================================================
+' COLORS Web Application - Activity Diagram
+' End-to-end session: log in -> add/search colors -> log out.
+' Verified against the deployed js/code.js, index.html and
+' color.html on the colors-lab droplet (Nov 1, 2026).
+' Swimlanes follow the LAMP layers each request crosses.
+' ============================================================
+skinparam ActivityBackgroundColor #F5F7FF
+skinparam ActivityBorderColor #3B4A8C
+skinparam SwimlaneTitleFontStyle bold
+
+|User|
+start
+:Open index.html;
+:Enter Username and Password;
+:Click "Do It";
+
+|Browser (code.js)|
+:doLogin(): reset userId/firstName/lastName,\nbuild JSON { login, password }\n(md5 hashing is commented out -> plain password);
+:XMLHttpRequest POST /LAMPAPI/Login.php;
+
+|PHP API (Apache)|
+:Login.php: SELECT ID, FirstName, LastName\nFROM Users WHERE Login=? AND Password=?;
+
+|MySQL|
+:Query Users table;
+
+|PHP API (Apache)|
+if (Matching row found?) then (yes)
+  :Return { id, firstName, lastName, error:"" };
+else (no)
+  :Return { id:0, error:"No Records Found" };
+endif
+
+|Browser (code.js)|
+if (jsonObject.id < 1?) then (yes)
+  :Show "User/Password combination incorrect"\nin loginResult;
+  |User|
+  stop
+else (no)
+  |Browser (code.js)|
+  :saveCookie(): firstName, lastName, userId\n(expires in 20 minutes);
+  :Redirect to color.html;
+endif
+
+|Browser (code.js)|
+:On DOMContentLoaded: readCookie();
+if (userId found in cookie?) then (no: userId = -1)
+  :Redirect to index.html;
+  |User|
+  stop
+else (yes)
+  |Browser (code.js)|
+  :Stay on color.html\n("Logged in as" line is commented out);
+endif
+
+repeat
+  |User|
+  :Choose an action;
+  if (Action?) then (Add Color)
+    :Type a color, click "Add Color";
+    |Browser (code.js)|
+    :addColor(): POST { color, userId }\nto /LAMPAPI/AddColor.php;
+    |PHP API (Apache)|
+    :AddColor.php: INSERT INTO Colors (UserId, Name);
+    |MySQL|
+    :Insert row into Colors;
+    |Browser (code.js)|
+    :On HTTP 200 show "Color has been added"\n(error field is not checked);
+  elseif (Action?) then (Search Colors)
+    |User|
+    :Type search text, click "Search Color";
+    |Browser (code.js)|
+    :searchColor(): POST { search, userId }\nto /LAMPAPI/SearchColors.php;
+    |PHP API (Apache)|
+    :SearchColors.php: SELECT Name FROM Colors\nWHERE Name LIKE %search% AND UserID=?;
+    |MySQL|
+    :Query this user's Colors;
+    |PHP API (Apache)|
+    if (Any rows?) then (yes)
+      :Return { results:[...], error:"" };
+    else (no)
+      :Return { error:"No Records Found" };
+    endif
+    |Browser (code.js)|
+    :Show "Color(s) has been retrieved";
+    if (results array present?) then (yes)
+      :Join names with <br /> and\nwrite them into colorList;
+    else (no)
+      :Loop over undefined results throws;\ncolorList is left unchanged;
+    endif
+  else (Log Out)
+    |User|
+    :Click "Log Out";
+    |Browser (code.js)|
+    :doLogout(): reset variables,\nexpire the cookie;
+    :Redirect to index.html;
+    |User|
+    stop
+  endif
+  |User|
+repeat while (Keep working?) is (yes)
+->no (close tab / cookie expires);
+stop
+@enduml

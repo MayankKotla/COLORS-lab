@@ -1,0 +1,177 @@
+@startuml class
+' ============================================================
+' COLORS Web Application - Class Diagram
+' Front end verified against the deployed index.html, color.html
+' and js/code.js on the colors-lab droplet (Nov 1, 2026).
+'
+' The app is not written with OO classes, so each real module is
+' modeled as a class with a stereotype:
+'   <<page>>     HTML pages served by Apache
+'   <<script>>   JavaScript files (functions = operations,
+'                module-level variables = attributes)
+'   <<endpoint>> PHP scripts in LAMPAPI/ (one request -> one response)
+'   <<table>>    MySQL tables in the COP4331 database
+'   <<JSON>>     request/response bodies sent between them
+' ============================================================
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #F5F7FF
+  BorderColor #3B4A8C
+}
+hide empty members
+
+package "Front End (/var/www/html)" {
+  class "index.html" as IndexPage <<page>> {
+    loginName : text input
+    loginPassword : password input
+    loginButton : button ("Do It")
+    loginResult : span
+    --
+    loginButton.onclick -> doLogin()
+  }
+
+  class "color.html" as ColorPage <<page>> {
+    userName : span
+    logoutButton : button
+    searchText : text input
+    searchColorButton : button
+    colorSearchResult : span
+    colorList : p
+    colorText : text input
+    addColorButton : button
+    colorAddResult : span
+    --
+    DOMContentLoaded -> readCookie()
+    logoutButton.onclick -> doLogout()
+    searchColorButton.onclick -> searchColor()
+    addColorButton.onclick -> addColor()
+  }
+
+  class "code.js" as CodeJS <<script>> {
+    - urlBase : String = "/LAMPAPI" {readOnly}
+    - extension : String = "php" {readOnly}
+    - userId : int = 0
+    - firstName : String = ""
+    - lastName : String = ""
+    --
+    + doLogin() : void
+    + saveCookie() : void
+    + readCookie() : void
+    + doLogout() : void
+    + addColor() : void
+    + searchColor() : void
+  }
+
+  class "md5.js" as MD5 <<script>> {
+    + md5(s : String) : String
+  }
+}
+
+note bottom of MD5
+  Loaded by index.html only.
+  The md5() call in doLogin()
+  is commented out, so the
+  password is sent unhashed.
+end note
+
+package "API (LAMPAPI)" {
+  class "Login.php" as LoginAPI <<endpoint>> {
+    + POST(LoginRequest) : LoginResponse
+    - getRequestInfo() : array
+    - sendResultInfoAsJson(obj) : void
+    - returnWithError(err) : void
+    - returnWithInfo(firstName, lastName, id) : void
+  }
+
+  class "AddColor.php" as AddAPI <<endpoint>> {
+    + POST(AddColorRequest) : ErrorResponse
+    - getRequestInfo() : array
+    - sendResultInfoAsJson(obj) : void
+    - returnWithError(err) : void
+  }
+
+  class "SearchColors.php" as SearchAPI <<endpoint>> {
+    + POST(SearchRequest) : SearchResponse
+    - getRequestInfo() : array
+    - sendResultInfoAsJson(obj) : void
+    - returnWithError(err) : void
+    - returnWithInfo(searchResults) : void
+  }
+}
+
+package "Database (MySQL: COP4331)" {
+  class Users <<table>> {
+    + ID : int <<PK>>
+    DateCreated : datetime
+    DateLastLoggedIn : datetime
+    {field} FirstName : varchar(50)
+    {field} LastName : varchar(50)
+    {field} Login : varchar(50)
+    {field} Password : varchar(50)
+  }
+
+  class Colors <<table>> {
+    + ID : int <<PK>>
+    {field} Name : varchar(50)
+    UserID : int <<FK>>
+  }
+}
+
+package "JSON payloads" {
+  class LoginRequest <<JSON>> {
+    login : String
+    password : String
+  }
+  class LoginResponse <<JSON>> {
+    id : int
+    firstName : String
+    lastName : String
+    error : String
+  }
+  class AddColorRequest <<JSON>> {
+    color : String
+    userId : int
+  }
+  class SearchRequest <<JSON>> {
+    search : String
+    userId : int
+  }
+  class SearchResponse <<JSON>> {
+    results : String[] [0..1]
+    error : String
+  }
+  class ErrorResponse <<JSON>> {
+    error : String
+  }
+}
+
+' --- pages load scripts ---
+IndexPage ..> CodeJS : <<loads>>
+IndexPage ..> MD5 : <<loads>>
+ColorPage ..> CodeJS : <<loads>>
+
+' --- script drives the pages (DOM reads/writes, redirects) ---
+CodeJS ..> IndexPage : reads inputs /\nwrites loginResult
+CodeJS ..> ColorPage : reads inputs /\nwrites results, colorList
+
+' --- script calls endpoints over HTTP POST (XMLHttpRequest) ---
+CodeJS ..> LoginAPI : POST /LAMPAPI/Login.php
+CodeJS ..> AddAPI : POST /LAMPAPI/AddColor.php
+CodeJS ..> SearchAPI : POST /LAMPAPI/SearchColors.php
+
+' --- payload types ---
+LoginAPI ..> LoginRequest
+LoginAPI ..> LoginResponse
+AddAPI ..> AddColorRequest
+AddAPI ..> ErrorResponse
+SearchAPI ..> SearchRequest
+SearchAPI ..> SearchResponse
+
+' --- endpoints query tables (mysqli prepared statements) ---
+LoginAPI ..> Users : SELECT
+AddAPI ..> Colors : INSERT
+SearchAPI ..> Colors : SELECT ... LIKE
+
+' --- data relationship: each user owns their colors ---
+Users "1" -- "0..*" Colors : owns >
+@enduml

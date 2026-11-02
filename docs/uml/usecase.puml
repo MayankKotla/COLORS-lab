@@ -1,0 +1,56 @@
+@startuml usecase
+' ============================================================
+' COLORS Web Application - Use Case Diagram
+' Models what a user can do in the COLORS LAMP app (Labs 1-3):
+'   index.html  -> login form          -> LAMPAPI/Login.php
+'   color.html  -> add / search colors -> LAMPAPI/AddColor.php,
+'                                         LAMPAPI/SearchColors.php
+'   Logout clears the session cookie (client side only).
+' ============================================================
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #F5F7FF
+  BorderColor #3B4A8C
+}
+
+actor "User" as user
+actor "MySQL Database\n(COP4331)" as db <<system>>
+
+rectangle "COLORS Web Application" {
+  usecase "Log In" as UC_Login
+  usecase "Validate Credentials" as UC_Validate
+  usecase "Show Login Error" as UC_LoginErr
+  usecase "Add Color" as UC_Add
+  usecase "Search Colors" as UC_Search
+  usecase "Verify Session\n(read cookie)" as UC_Session
+  usecase "Log Out" as UC_Logout
+
+  ' Login always checks the Users table
+  UC_Login ..> UC_Validate : <<include>>
+  ' Error message only appears on a bad login/password
+  UC_LoginErr ..> UC_Login : <<extend>>\n[no matching user]
+
+  ' color.html calls readCookie() before the user can act;
+  ' no valid userId -> redirected back to index.html
+  UC_Add ..> UC_Session : <<include>>
+  UC_Search ..> UC_Session : <<include>>
+}
+
+user -- UC_Login
+user -- UC_Add
+user -- UC_Search
+user -- UC_Logout
+
+UC_Validate -- db
+UC_Add -- db
+UC_Search -- db
+
+note bottom of user
+  There is no "Register" use case:
+  the COLORS app has no sign-up page.
+  Users are inserted directly into the
+  Users table in MySQL.
+end note
+@enduml

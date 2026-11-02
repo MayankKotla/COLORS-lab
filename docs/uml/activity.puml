@@ -21,7 +21,7 @@ start
 :XMLHttpRequest POST /LAMPAPI/Login.php;
 
 |PHP API (Apache)|
-:Login.php: SELECT ID, FirstName, LastName\nFROM Users WHERE Login=? AND Password=?;
+:Login.php: SELECT ID, firstName, lastName\nFROM Users WHERE Login=? AND Password=?;
 
 |MySQL|
 :Query Users table;
@@ -30,7 +30,7 @@ start
 if (Matching row found?) then (yes)
   :Return { id, firstName, lastName, error:"" };
 else (no)
-  :Return { id:0, error:"No Records Found" };
+  :Return { id:0, firstName:"", lastName:"",\n error:"No Records Found" };
 endif
 
 |Browser (code.js)|
@@ -81,7 +81,7 @@ repeat
     if (Any rows?) then (yes)
       :Return { results:[...], error:"" };
     else (no)
-      :Return { error:"No Records Found" };
+      :Return { id:0, firstName:"", lastName:"",\n error:"No Records Found" }\n(error helper copied from Login.php);
     endif
     |Browser (code.js)|
     :Show "Color(s) has been retrieved";

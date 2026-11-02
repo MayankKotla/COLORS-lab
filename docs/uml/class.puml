@@ -101,9 +101,7 @@ package "API (LAMPAPI)" {
 
 package "Database (MySQL: COP4331)" {
   class Users <<table>> {
-    + ID : int <<PK>>
-    DateCreated : datetime
-    DateLastLoggedIn : datetime
+    + ID : int <<PK>> {auto_increment}
     {field} FirstName : varchar(50)
     {field} LastName : varchar(50)
     {field} Login : varchar(50)
@@ -111,9 +109,9 @@ package "Database (MySQL: COP4331)" {
   }
 
   class Colors <<table>> {
-    + ID : int <<PK>>
+    + ID : int <<PK>> {auto_increment}
     {field} Name : varchar(50)
-    UserID : int <<FK>>
+    UserID : int = 0
   }
 }
 
@@ -165,7 +163,8 @@ LoginAPI ..> LoginResponse
 AddAPI ..> AddColorRequest
 AddAPI ..> ErrorResponse
 SearchAPI ..> SearchRequest
-SearchAPI ..> SearchResponse
+SearchAPI ..> SearchResponse : found rows
+SearchAPI ..> LoginResponse : no rows\n(reuses Login error shape)
 
 ' --- endpoints query tables (mysqli prepared statements) ---
 LoginAPI ..> Users : SELECT
@@ -174,4 +173,11 @@ SearchAPI ..> Colors : SELECT ... LIKE
 
 ' --- data relationship: each user owns their colors ---
 Users "1" -- "0..*" Colors : owns >
+
+note bottom of Colors
+  UserID is a logical reference to Users.ID.
+  There is no FOREIGN KEY constraint in MySQL;
+  the link is enforced only by the PHP queries
+  (WHERE ... UserID=?).
+end note
 @enduml

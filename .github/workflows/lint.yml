@@ -1,25 +1,29 @@
-name: Lint
+name: CI (lint + tests)
 
+# Runs on every push and every pull request, to any branch.
 on:
   push:
   pull_request:
 
 jobs:
-  lint:
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v5
 
-      - name: Set up Node.js (lint tools only)
+      # Node is used ONLY for the lint and test tools.
+      # The app itself is a LAMP app (Apache + PHP + MySQL).
+      - name: Set up Node.js (lint + test tools only)
         uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
 
-      - name: Install lint tools
+      - name: Install lint and test tools
         run: npm ci
 
+      # ---------- Lint (from Assignment 4) ----------
       - name: Lint HTML (HTMLHint)
         run: npm run lint:html
 
@@ -28,3 +32,10 @@ jobs:
 
       - name: Lint JavaScript (ESLint)
         run: npm run lint:js
+
+      # ---------- Tests (Assignment 5) ----------
+      # Front-end unit tests: tests/unit/
+      # Front-end <-> LAMPAPI integration tests: tests/integration/
+      # Any failing test makes this step (and the whole run) fail.
+      - name: Run unit and integration tests (Jest)
+        run: npm test -- --ci

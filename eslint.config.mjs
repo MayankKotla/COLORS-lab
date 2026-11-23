@@ -25,4 +25,25 @@ export default [
       semi: ["error", "always"],
     },
   },
+  {
+    // Test tooling runs in Node (CommonJS) under Jest, not in the browser.
+    files: ["tests/**/*.js", "jest.config.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+        ...globals.browser, // tests drive a jsdom "browser" (document, window)
+        // Functions from js/code.js, loaded into the jsdom window by
+        // tests/helpers/loadApp.js:
+        doLogin: "readonly",
+        readCookie: "readonly",
+        saveCookie: "readonly",
+        doLogout: "readonly",
+        addColor: "readonly",
+        searchColor: "readonly",
+        formatColorList: "readonly",
+      },
+    },
+  },
 ];

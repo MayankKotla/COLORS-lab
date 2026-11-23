@@ -139,6 +139,23 @@ function addColor()
 	
 }
 
+// Turns the "results" array returned by SearchColors.php into the HTML
+// shown in the color list: one color per line, separated by <br />.
+// Pulled out of searchColor() so it can be unit tested on its own.
+function formatColorList( results )
+{
+	let colorList = "";
+	for( let i=0; i<results.length; i++ )
+	{
+		colorList += results[i];
+		if( i < results.length - 1 )
+		{
+			colorList += "<br />\r\n";
+		}
+	}
+	return colorList;
+}
+
 function searchColor()
 {
 	let srch = document.getElementById("searchText").value;
@@ -160,18 +177,22 @@ function searchColor()
 		{
 			if (this.readyState === 4 && this.status === 200) 
 			{
-				document.getElementById("colorSearchResult").innerHTML = "Color(s) has been retrieved";
 				let jsonObject = JSON.parse( xhr.responseText );
 				
-				for( let i=0; i<jsonObject.results.length; i++ )
+				// When nothing matches, SearchColors.php sends back
+				// {id:0, firstName:"", lastName:"", error:"No Records Found"}
+				// with no "results" array, so show its error instead of crashing.
+				if( !Array.isArray( jsonObject.results ) )
 				{
-					colorList += jsonObject.results[i];
-					if( i < jsonObject.results.length - 1 )
-					{
-						colorList += "<br />\r\n";
-					}
+					document.getElementById("colorSearchResult").innerHTML = jsonObject.error || "No colors found";
+					document.getElementsByTagName("p")[0].innerHTML = "";
+					return;
 				}
 				
+				document.getElementById("colorSearchResult").innerHTML = "Color(s) has been retrieved";
+
+				colorList = formatColorList( jsonObject.results );
+
 				document.getElementsByTagName("p")[0].innerHTML = colorList;
 			}
 		};
